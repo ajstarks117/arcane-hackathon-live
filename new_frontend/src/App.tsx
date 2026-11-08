@@ -523,6 +523,11 @@ function DiffPanel({ run }: { run: Run | null }) {
   );
 }
 
+function githubPullRequestLink(url: string | null) {
+  if (!url || !/^https:\/\/github\.com\/[A-Za-z0-9_.-]+\/[A-Za-z0-9_.-]+\/pull\/[1-9]\d*$/.test(url)) return null;
+  return <a className="button primary" href={url} target="_blank" rel="noopener noreferrer"><Icon name="external" size={16} />Open pull request on GitHub</a>;
+}
+
 function RepairRun({ go, retry, assign }: { go: (s: Screen) => void; retry: () => void; assign: () => void }) {
   const { runs, repoFilter, selected, detail, select } = useData();
   const [open, setOpen] = useState<number | null>(null);
@@ -658,9 +663,9 @@ function RepairRun({ go, retry, assign }: { go: (s: Screen) => void; retry: () =
               <Button onClick={assign} disabled={run.status === "working"}>
                 Send to a person
               </Button>
-              <Button kind="primary" icon="pull" onClick={() => go("pr")} disabled={run.status === "working" || !detail?.patchDiff}>
+              {githubPullRequestLink(run.prUrl) ?? <Button kind="primary" icon="pull" onClick={() => go("pr")} disabled={run.status === "working" || !detail?.patchDiff}>
                 Open pull request
-              </Button>
+              </Button>}
             </div>
           </div>
         </div>
@@ -1065,10 +1070,9 @@ function PRPreview() {
         </aside>
       </div>
       <div className="bottom-actions">
-        {run.prUrl && !run.prUrl.includes("/pull/dry-run-") && <Button icon="external" onClick={() => window.open(run.prUrl!, "_blank")}>Open on GitHub</Button>}
-        <Button kind="primary" onClick={open} disabled={busy || run.status === "working" || !!run.prUrl}>
-          {run.prUrl?.includes("/pull/dry-run-") ? "Dry-run preview ready" : run.prUrl ? "Pull request opened" : busy ? "Opening…" : "Open pull request"}
-        </Button>
+        {githubPullRequestLink(run.prUrl) ?? <Button kind="primary" onClick={open} disabled={busy || run.status === "working" || !!run.prUrl}>
+          {run.prUrl ? "Dry-run preview ready" : busy ? "Opening…" : "Open pull request"}
+        </Button>}
       </div>
     </div>
   );
