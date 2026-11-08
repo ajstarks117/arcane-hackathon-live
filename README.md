@@ -1,3 +1,9 @@
+# ARCANE hosted hackathon submission
+
+[Open the live dashboard](https://arcane-hackathon-live.vercel.app) · [Hosted configuration and judging workflow](DEPLOYMENT.md) · [Historical merged repair](https://github.com/ajstarks117/TEST-REPO/pull/6)
+
+The hosted edition runs the pinned token-validation bug in Docker on GitHub Actions. The public dashboard uses GitHub sign-in and produces dry-run PR previews. The original engine documentation follows below.
+
 <div align="center">
 
 # 🔮 ARCANE

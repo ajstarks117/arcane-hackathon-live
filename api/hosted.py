@@ -120,9 +120,18 @@ def update(repair_id: str, message: Update):
 
 
 @app.post("/worker-smoke", dependencies=[Depends(authenticate)])
-def smoke():
-    run = dispatch({"repo_full_name": DEMO_REPO, "commit_sha": DEMO_SHA, "failure_log": DEMO_LOG,
-                    "branch": "main", "source": "deployment-check", "owner": "deployment-check"})
+def smoke(manual_dispatch: bool = False):
+    event = {"repo_full_name": DEMO_REPO, "commit_sha": DEMO_SHA, "failure_log": DEMO_LOG,
+             "branch": "main", "source": "deployment-check", "owner": "deployment-check"}
+    if manual_dispatch:
+        # Let the deployment operator test the worker before enabling user sign-in.
+        with lock:
+            expire()
+            if any(r["status"] == "working" for r in store.runs):
+                raise HTTPException(429, "A repair is already running.")
+            run = store.create_run(event)
+    else:
+        run = dispatch(event)
     return {"id": run["id"]}
 
 @app.get("/worker-smoke/{repair_id}", dependencies=[Depends(authenticate)])
