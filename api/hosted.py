@@ -46,6 +46,29 @@ def dispatch(event):
         store.add_audit("Queued repair", run["repo"], event.get("owner", "ARCANE"))
         return run
 
+async def reconcile_jobs():
+    """Platform-level failures can occur before any workflow step can call back."""
+    with lock:
+        active = [r["id"] for r in store.runs if r["status"] == "working"]
+    if not active:
+        return
+    try:
+        async with httpx.AsyncClient(timeout=10) as client:
+            response = await client.get("https://api.github.com/repos/ajstarks117/arcane-hackathon-live/actions/workflows/repair.yml/runs",
+                                        params={"event":"workflow_dispatch", "per_page":30})
+            response.raise_for_status()
+            jobs = response.json()["workflow_runs"]
+    except (httpx.HTTPError, KeyError, ValueError):
+        return
+    with lock:
+        for job in jobs:
+            repair_id = job.get("display_title", "").removeprefix("Repair ")
+            if repair_id not in active or job["status"] != "completed":
+                continue
+            r = store.get_run(repair_id)
+            if r and r["status"] == "working" and job.get("conclusion") != "success":
+                finish_run(r, {}, f"GitHub Actions ended with {job.get('conclusion')}. Details: {job['html_url']}")
+
 @asynccontextmanager
 async def lifespan(app):
     for key in ("APP_URL", "WORKER_SECRET", "DATABASE_URL"):
@@ -56,6 +79,7 @@ async def lifespan(app):
         while True:
             with lock:
                 expire()
+            await reconcile_jobs()
             await asyncio.sleep(60)
     task = asyncio.create_task(monitor())
     try:
