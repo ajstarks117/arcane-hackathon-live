@@ -8,6 +8,7 @@ from datetime import datetime, timezone
 import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
+from api.github_app import router as setup_router, configure_oauth, credentials, dispatch_token
 from api.auth import auth_router
 from api.routes import router
 from api.recorder import start_run, apply_node, finish_run
@@ -36,10 +37,10 @@ def dispatch(event):
         store.save()
         try:
             response = httpx.post("https://api.github.com/repos/ajstarks117/arcane-hackathon-live/actions/workflows/repair.yml/dispatches",
-                headers={"Authorization": "Bearer " + os.environ["ACTIONS_DISPATCH_TOKEN"]},
+                headers={"Authorization": "Bearer " + dispatch_token()},
                 json={"ref": "main", "inputs": {"repair_id": run["id"]}}, timeout=15)
             response.raise_for_status()
-        except httpx.HTTPError:
+        except Exception:
             finish_run(run, {}, "GitHub did not confirm workflow dispatch. Check Actions access and retry.")
             raise HTTPException(502, run["error"])
         store.add_audit("Queued repair", run["repo"], event.get("owner", "ARCANE"))
@@ -47,9 +48,10 @@ def dispatch(event):
 
 @asynccontextmanager
 async def lifespan(app):
-    for key in ("APP_URL", "GITHUB_CLIENT_ID", "GITHUB_CLIENT_SECRET", "ACTIONS_DISPATCH_TOKEN", "WORKER_SECRET", "DATABASE_URL"):
+    for key in ("APP_URL", "WORKER_SECRET", "DATABASE_URL"):
         if not os.getenv(key):
             raise RuntimeError(f"Missing hosted setting {key}")
+    configure_oauth(credentials())
     async def monitor():
         while True:
             with lock:
@@ -62,6 +64,7 @@ async def lifespan(app):
         task.cancel()
 
 app = FastAPI(lifespan=lifespan)
+app.include_router(setup_router)
 app.include_router(auth_router)
 app.include_router(router)
 
@@ -114,3 +117,17 @@ def update(repair_id: str, message: Update):
             finish_run(r, message.state)
         store.save()
         return {"ok": True}
+
+
+@app.post("/worker-smoke", dependencies=[Depends(authenticate)])
+def smoke():
+    run = dispatch({"repo_full_name": DEMO_REPO, "commit_sha": DEMO_SHA, "failure_log": DEMO_LOG,
+                    "branch": "main", "source": "deployment-check", "owner": "deployment-check"})
+    return {"id": run["id"]}
+
+@app.get("/worker-smoke/{repair_id}", dependencies=[Depends(authenticate)])
+def smoke_result(repair_id: str):
+    run = store.get_run(repair_id)
+    if not run or run["owner"] != "deployment-check":
+        raise HTTPException(404)
+    return {k:run[k] for k in ("status","stage","testsPassed","confidence","patchDiff","reason","validatorSummary")}

@@ -71,7 +71,7 @@ def current_user(request: Request) -> Optional[dict]:
 def require_user(request: Request) -> Optional[dict]:
     """Dependency: 401 when OAuth is enabled and nobody is signed in."""
     user = current_user(request)
-    if user is None and oauth_configured():
+    if user is None and (oauth_configured() or os.getenv("ARCANE_HOSTED")):
         raise HTTPException(401, "Sign in with GitHub to continue.")
     return user
 
@@ -188,7 +188,7 @@ def callback(request: Request, code: str = "", state: str = "", error: str = "")
 @auth_router.get("/me")
 def me(request: Request):
     user = current_user(request)
-    if user is None and oauth_configured():
+    if user is None and (oauth_configured() or os.getenv("ARCANE_HOSTED")):
         raise HTTPException(401, "Not signed in")
     pub = public_user(user) or {"login": "local", "name": "Local user", "email": "", "avatar": ""}
     pub["workspace"] = store.settings.get("workspace", "Team Bahadur")
