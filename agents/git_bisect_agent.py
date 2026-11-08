@@ -58,8 +58,8 @@ def run_bisect(state: Dict[str, Any]) -> Dict[str, Any]:
         exec_cmd(["git", "config", "--global", "user.name", "ARCANE Bot"])
 
         # 2. Clone the repo shallowly
-        logger.info(f"[Bisect] Cloning repository {repo_full_name} (depth=20)...")
-        clone_res = exec_cmd(["git", "clone", "--depth=20", repo_url, "."])
+        logger.info(f"[Bisect] Cloning repository {repo_full_name}...")
+        clone_res = exec_cmd(["git", "clone", repo_url, "."])
         if clone_res.returncode != 0:
             raise RuntimeError(f"Clone failed: {clone_res.stderr}")
 

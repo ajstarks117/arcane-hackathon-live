@@ -251,6 +251,8 @@ class WatchBody(BaseModel):
 
 @auth_router.post("/github/watch")
 def watch_repo(body: WatchBody, user=Depends(require_user)):
+    if os.getenv("ARCANE_HOSTED"):
+        raise HTTPException(403, "This judging deployment uses the pinned public demo repository.")
     login_name = (user or {}).get("login", "local")
     token = (user or {}).get("token") or os.getenv("GITHUB_PAT")
     if "/" not in body.repo:
@@ -295,6 +297,8 @@ def watch_repo(body: WatchBody, user=Depends(require_user)):
 
 @auth_router.delete("/github/watch")
 def unwatch_repo(repo: str, user=Depends(require_user)):
+    if os.getenv("ARCANE_HOSTED"):
+        raise HTTPException(403, "The judging deployment uses a fixed repository.")
     store.watched.pop(repo, None)
     store.settings["repositories"] = [r for r in store.settings.get("repositories", []) if r["name"] != repo]
     store.add_audit("Stopped watching a repository", repo, (user or {}).get("login", "local"))

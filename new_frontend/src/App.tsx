@@ -978,9 +978,9 @@ function PRPreview() {
     setErr("");
     try {
       const r = await api.openPr(run.id, { title, comment });
-      notify(r.prUrl ? "Pull request opened" : "Done");
+      notify(r.prUrl?.includes("/pull/dry-run-") ? "Dry-run preview ready" : "Pull request opened");
       await refresh();
-      if (r.prUrl) window.open(r.prUrl, "_blank");
+      if (r.prUrl && !r.prUrl.includes("/pull/dry-run-")) window.open(r.prUrl, "_blank");
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : String(e));
     } finally {
@@ -992,7 +992,7 @@ function PRPreview() {
       <PageHeader
         title="Pull request preview"
         description="Review exactly what your team will see on GitHub."
-        action={run.prUrl ? <Badge tone="success">Opened</Badge> : <Badge tone={run.status === "ready" ? "success" : "saffron"}>{run.status === "ready" ? "Ready to open" : statusLabel[run.status]}</Badge>}
+        action={run.prUrl ? <Badge tone="success">{run.prUrl.includes("/pull/dry-run-") ? "Dry-run preview" : "Opened"}</Badge> : <Badge tone={run.status === "ready" ? "success" : "saffron"}>{run.status === "ready" ? "Ready to open" : statusLabel[run.status]}</Badge>}
       />
       <div className="pr-layout">
         <div className="pr-document">
@@ -1065,9 +1065,9 @@ function PRPreview() {
         </aside>
       </div>
       <div className="bottom-actions">
-        {run.prUrl && <Button icon="external" onClick={() => window.open(run.prUrl!, "_blank")}>Open on GitHub</Button>}
+        {run.prUrl && !run.prUrl.includes("/pull/dry-run-") && <Button icon="external" onClick={() => window.open(run.prUrl!, "_blank")}>Open on GitHub</Button>}
         <Button kind="primary" onClick={open} disabled={busy || run.status === "working" || !!run.prUrl}>
-          {run.prUrl ? "Pull request opened" : busy ? "Opening…" : "Open pull request"}
+          {run.prUrl?.includes("/pull/dry-run-") ? "Dry-run preview ready" : run.prUrl ? "Pull request opened" : busy ? "Opening…" : "Open pull request"}
         </Button>
       </div>
     </div>

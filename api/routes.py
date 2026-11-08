@@ -509,6 +509,8 @@ def get_settings(user=Depends(require_user)):
 
 @router.put("/settings")
 def put_settings(body: dict, user=Depends(require_user)):
+    if os.getenv("ARCANE_HOSTED") and login_of(user) != "ajstarks117":
+        raise HTTPException(403, "Only the workspace owner can change deployment settings.")
     allowed = {"repositories", "models", "safety", "team", "notifications"}
     for k, v in body.items():
         if k in allowed:
