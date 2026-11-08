@@ -196,7 +196,7 @@ export const api = {
   overview: () => request<Overview>("/overview"),
   runs: (q = "") => request<{ runs: Run[] }>(`/runs${q}`),
   run: (id: string) => request<Run>(`/runs/${id}`),
-  createRun: (b: { repo: string; branch: string; workflowRun: string; context: string }) =>
+  createRun: (b: { repo: string; branch: string; workflowRun?: string; context?: string }) =>
     post<Run>("/runs", b),
   retry: (id: string, b: { hint: string; files: string[]; model: string }) =>
     post<Run>(`/runs/${id}/retry`, b),
