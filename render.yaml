@@ -1,0 +1,32 @@
+services:
+  - type: web
+    name: arcane-hackathon-live-api
+    runtime: python
+    plan: free
+    buildCommand: pip install -r deploy/api-requirements.txt
+    startCommand: uvicorn api.hosted:app --host 0.0.0.0 --port $PORT --workers 1
+    healthCheckPath: /health
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.8
+      - key: ARCANE_HOSTED
+        value: '1'
+      - key: ARCANE_DRY_RUN
+        value: '1'
+      - key: DATABASE_URL
+        fromDatabase:
+          name: arcane-hackathon-db
+          property: connectionString
+      - key: APP_URL
+        sync: false
+      - key: GITHUB_CLIENT_ID
+        sync: false
+      - key: GITHUB_CLIENT_SECRET
+        sync: false
+      - key: ACTIONS_DISPATCH_TOKEN
+        sync: false
+      - key: WORKER_SECRET
+        sync: false
+databases:
+  - name: arcane-hackathon-db
+    plan: free

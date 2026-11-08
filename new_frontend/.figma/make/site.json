@@ -1,0 +1,10 @@
+{
+  "description": "ARCANE helps developers and DevOps teams diagnose failed GitHub builds, test AI-generated fixes in a sandbox, and review or open pull requests with confidence.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

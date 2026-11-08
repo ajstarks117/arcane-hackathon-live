@@ -1,0 +1,50 @@
+name: ARCANE repair
+run-name: Repair ${{ inputs.repair_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      repair_id:
+        description: Run ID issued by the dashboard
+        required: true
+        type: string
+permissions:
+  contents: read
+jobs:
+  repair:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 40
+    env:
+      REPAIR_ID: ${{ inputs.repair_id }}
+      ARCANE_API_URL: ${{ vars.ARCANE_API_URL }}
+      CHROMADB_PATH: /tmp/arcane-memory
+      ARCANE_DRY_RUN: '1'
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+      - name: Build repair sandbox and install agents
+        run: |
+          docker build -t arcane-sandbox .
+          pip install torch --index-url https://download.pytorch.org/whl/cpu
+          pip install -r requirements.txt
+      - name: Run graph and report each stage
+        env:
+          WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
+          GOOGLE_API_KEY: ${{ secrets.GOOGLE_API_KEY }}
+        run: |
+          test -n "$GOOGLE_API_KEY"
+          python -m deploy.worker
+      - name: Report worker failure
+        if: failure() || cancelled()
+        env:
+          WORKER_SECRET: ${{ secrets.WORKER_SECRET }}
+        shell: bash
+        run: |
+          [[ "$REPAIR_ID" =~ ^[0-9a-f]{10}$ ]] || exit 1
+          curl --fail --retry 3 -H "Authorization: Bearer $WORKER_SECRET" -H 'Content-Type: application/json' \
+            -d "{\"job\":\"$GITHUB_RUN_ID:$GITHUB_RUN_ATTEMPT\",\"sequence\":999999,\"kind\":\"error\",\"error\":\"Hosted job failed. See GitHub Actions run $GITHUB_RUN_ID.\"}" \
+            "$ARCANE_API_URL/worker/$REPAIR_ID"

@@ -1,0 +1,15 @@
+.env
+__pycache__
+*.pyc
+.DS_Store
+node_modules
+.venv
+data/
+
+.vercel/
+chroma_data/
+memory/
+.env.*
+!.env.example
+*.pem
+*.key
