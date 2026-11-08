@@ -1,4 +1,6 @@
 """Web process on Render. GitHub Actions executes the graph on an ephemeral Docker host."""
+import json
+from pathlib import Path
 import asyncio
 import os
 import secrets
@@ -30,20 +32,13 @@ def dispatch(event):
         expire()
         if event["repo_full_name"] != DEMO_REPO or event["commit_sha"] != DEMO_SHA:
             raise HTTPException(400, "Use the pinned public token-validation build for this deployment.")
-        if any(r["status"] == "working" for r in store.runs):
-            raise HTTPException(429, "A repair is already running. Try again after it finishes.")
-        run = store.create_run(event)
-        store.log(run, "INFO", "Dispatching GitHub Actions worker")
+        snapshot = json.loads(Path(__file__).with_name("demo_repair.json").read_text(encoding="utf-8"))
+        run = store.create_run({**event, "source": "recorded-demo"})
+        run.update(snapshot)
+        run["finishedAt"] = run["startedAt"]
+        store.log(run, "INFO", "Loaded the recorded token-validation repair. The test results and pull request are from the original run.")
+        store.add_audit("Viewed recorded demo repair", run["repo"], run["owner"])
         store.save()
-        try:
-            response = httpx.post("https://api.github.com/repos/ajstarks117/arcane-hackathon-live/actions/workflows/repair.yml/dispatches",
-                headers={"Authorization": "Bearer " + dispatch_token()},
-                json={"ref": "main", "inputs": {"repair_id": run["id"]}}, timeout=15)
-            response.raise_for_status()
-        except Exception:
-            finish_run(run, {}, "GitHub did not confirm workflow dispatch. Check Actions access and retry.")
-            raise HTTPException(502, run["error"])
-        store.add_audit("Queued repair", run["repo"], event.get("owner", "ARCANE"))
         return run
 
 async def reconcile_jobs():

@@ -353,7 +353,7 @@ function RunDialog({ close, started }: { close: () => void; started: (r: Run) =>
     setErr("");
     try {
       const run = await api.createRun({ repo, branch: "main" });
-      notify("Repair started");
+      notify("Recorded demo loaded");
       await refresh();
       started(run);
     } catch (e) {
@@ -364,7 +364,7 @@ function RunDialog({ close, started }: { close: () => void; started: (r: Run) =>
   return (
     <Modal
       title="Run repair on a build"
-      description="Run the repair pipeline on the public token-validation failure. GitHub Actions executes the tests in Docker."
+      description="Explore the recorded repair for the public token-validation failure, including its timeline, Docker test results and patch."
       onClose={close}
       footer={
         <>
@@ -376,7 +376,7 @@ function RunDialog({ close, started }: { close: () => void; started: (r: Run) =>
       }
     >
       <p><strong>{repo}</strong> · <code>1e690ab</code></p>
-      <p>The build rejects a valid 20-character token. Dry-run mode produces a reviewable diff without opening a pull request.</p>
+      <p>The build rejects a valid 20-character token. This demo loads a saved result and links to the original pull request.</p>
       {err && <p className="inline-error">{err}</p>}
     </Modal>
   );
