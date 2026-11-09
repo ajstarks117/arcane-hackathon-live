@@ -1,13 +1,23 @@
+import builds from "./actions-repairs.json";
 import cases from "./demo-cases.json";
 import token from "./demo-token.json";
 import type { Run, Step } from "./api";
 
-export type DemoCase = "token" | keyof typeof cases;
+export type DemoCase = "token" | keyof typeof cases | keyof typeof builds;
+export const recordedBuilds = Object.values(builds);
+export type BuildId = keyof typeof builds;
+export function buildFromUrl(value: string): BuildId | undefined {
+  try {
+    const url = new URL(value.trim());
+    if (url.origin !== "https://github.com" || url.username || url.password) return;
+    return (Object.keys(builds) as BuildId[]).find(id => builds[id].url.toLowerCase() === (url.origin + url.pathname.replace(/\/$/, "")).toLowerCase());
+  } catch { return; }
+}
 export interface Replay { id: string; issue: DemoCase; start: number }
 const stageEnds = [3500, 8500, 15000, 19500, 27000, 30000];
 
 export function replayRun(entry: Replay, now: number): Run {
-  const data = entry.issue === "token" ? token : cases[entry.issue];
+  const data = entry.issue === "token" ? token : entry.issue === "21" || entry.issue === "22" ? cases[entry.issue] : builds[entry.issue];
   const elapsed = Math.max(0, now - entry.start);
   const done = stageEnds.filter(end => elapsed >= end).length;
   const finished = done === stageEnds.length;
@@ -34,7 +44,7 @@ export function replayRun(entry: Replay, now: number): Run {
     prUrl: finished ? data.prUrl : null, confidence: finished && "confidence" in data ? data.confidence : null,
     model: "model" in data ? data.model : "", attempts: "attempts" in data ? data.attempts : 0,
     logs: steps.slice(0, done).map((s,i) => ({t:new Date(entry.start + stageEnds[i]).toISOString(), level:"INFO", msg:s.body})),
-    logCount: done, commitMessage:"", author:"", workflowRun:"", hint:"", failingLine:0, suspectedFunction:"",
+    logCount: done, commitMessage:"", author:"", workflowRun:"url" in data ? data.url : "", hint:"", failingLine:0, suspectedFunction:"",
     bisectReport:"", cascadeReport:"", autoApproved:false, error:null, memoryHit:false, conflict:null,
     agentsUsed:[], decision:"none", rejectReason:"", assignee:"", reason:"",
   };

@@ -1,3 +1,4 @@
+import { buildFromUrl, recordedBuilds } from "./replay";
 import { useEffect, useMemo, useState } from "react";
 import {
   api,
@@ -346,23 +347,25 @@ function Home({ go, openRun }: { go: (s: Screen) => void; openRun: () => void })
 function RunDialog({ close, started }: { close: () => void; started: () => void }) {
   const { startReplay } = useData();
   const repo = "ajstarks117/TEST-REPO";
-  const [demoCase, setCase] = useState<import("./replay").DemoCase>("token");
+  const [url, setUrl] = useState("");
+  const build = buildFromUrl(url);
   const submit = () => {
-    startReplay(demoCase);
+    if (!build) return;
+    startReplay(build);
     started();
   };
   return (
     <Modal title="Replay a repair" description={repo} onClose={close}
       footer={<>
         <Button onClick={close}>Close</Button>
-        <Button kind="primary" onClick={submit}>Start repair</Button>
+        <Button kind="primary" onClick={submit} disabled={!build}>Start repair</Button>
       </>}>
-      <p className="replay-note">Live repairs need a Docker worker to run tests from a connected repository. This deployment has no live worker, so you can explore three saved repairs and their GitHub pull requests here. Repository connections and failed Actions run links are available in the full setup.</p>
-      <label>Choose an issue <select value={demoCase} onChange={e => setCase(e.target.value as typeof demoCase)}>
-        <option value="token">Valid token rejected</option>
-        <option value="21">#21 - Null login payload</option>
-        <option value="22">#22 - Null Authorization header</option>
-      </select></label>
+      <p className="replay-note">This hosted demo replays recorded repairs. Open one of these failed GitHub Actions runs, copy its URL, and paste it below to follow the repair to its original pull request.</p>
+      <ul>{recordedBuilds.map(run => <li key={run.url}><a href={run.url} target="_blank" rel="noreferrer" className="text-button">CI Test Suite #{run.number} · {run.sha.slice(0,7)}</a></li>)}</ul>
+      <label className="field">Failed GitHub Actions run URL
+        <input type="url" placeholder="https://github.com/owner/repo/actions/runs/…" value={url} onChange={e => setUrl(e.target.value)} />
+      </label>
+      {url.trim() && !build && <p className="inline-error">Paste the run URL from one of the three builds above.</p>}
     </Modal>
   );
 }
@@ -572,6 +575,7 @@ function RepairRun({ go, retry, assign }: { go: (s: Screen) => void; retry: () =
                 {run.repo} <b>/</b> <code>{run.branch}</code> <b>/</b> Run #{run.id}
               </span>
               <h1>{run.title}</h1>
+              {run.source === "demo-replay" && run.workflowRun && <a className="text-button" href={run.workflowRun} target="_blank" rel="noreferrer">View failed GitHub Actions run</a>}
               <p>
                 {run.sha && !run.sha.startsWith("manual") ? (
                   <>

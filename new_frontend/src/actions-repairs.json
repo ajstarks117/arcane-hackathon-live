@@ -1,0 +1,176 @@
+{
+  "42493429814": {
+    "number": 32,
+    "url": "https://github.com/ajstarks117/TEST-REPO/actions/runs/42493429814",
+    "sha": "22a281c3771f8715ce1b4715f0d1e4c8776a8515",
+    "prUrl": "https://github.com/ajstarks117/TEST-REPO/pull/18",
+    "title": "CI Test Suite #32 \u00b7 test_valid_token",
+    "failingTest": "test_valid_token",
+    "failingFile": "src/auth.py",
+    "rootCause": "The token length validation check incorrectly requires a minimum of 90 characters instead of 10. This causes tokens that meet the intended 10-character requirement to fail.",
+    "patchDiff": "--- a/src/auth.py\n+++ b/src/auth.py\n@@ -9,7 +9,7 @@\n         raise ValueError(\"Token cannot be None\")\n     cleaned_token = token.strip()\n \n-    if len(cleaned_token) < 90:\n+    if len(cleaned_token) < 10:\n         raise ValueError(\"Token must be at least 10 characters long\")\n \n     return {\n\n",
+    "testsPassed": true,
+    "confidence": 85.0,
+    "validatorSummary": "Original ARCANE validator: passed.",
+    "steps": [
+      {
+        "key": "failed",
+        "title": "Build failed",
+        "body": "GitHub marked CI Test Suite #32 as failed.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "bisect",
+        "title": "Analyze the failure",
+        "body": "The token length validation check incorrectly requires a minimum of 90 characters instead of 10. This causes tokens that meet the intended 10-character requirement to fail.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "patch",
+        "title": "Prepare the patch",
+        "body": "Restore the minimum token length to 10 characters.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "related",
+        "title": "Review the changed files",
+        "body": "Inspect the source change and patch attachment in PR #18.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "sandbox",
+        "title": "Review validation",
+        "body": "The PR records the ARCANE validator result as True.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "ready",
+        "title": "Review the pull request",
+        "body": "fix: ARCANE auto-repair for test_valid_token",
+        "evidence": "",
+        "status": "done"
+      }
+    ]
+  },
+  "42494210781": {
+    "number": 35,
+    "url": "https://github.com/ajstarks117/TEST-REPO/actions/runs/42494210781",
+    "sha": "dcebcc98c32b0ca5641af6cd2bbf49fa2124a23b",
+    "prUrl": "https://github.com/ajstarks117/TEST-REPO/pull/20",
+    "title": "CI Test Suite #35 \u00b7 test_valid_token",
+    "failingTest": "test_valid_token",
+    "failingFile": "src/auth.py",
+    "rootCause": "The `validate_token` function incorrectly checks if the cleaned token length is less than 40 instead of 10. This causes valid tokens with fewer than 40 characters to raise an unexpected ValueError.",
+    "patchDiff": "--- a/src/auth.py\n+++ b/src/auth.py\n@@ -9,7 +9,7 @@\n         raise ValueError(\"Token cannot be None\")\n     cleaned_token = token.strip()\n \n-    if len(cleaned_token) < 40:\n+    if len(cleaned_token) < 10:\n         raise ValueError(\"Token must be at least 10 characters long\")\n \n     return {\n\n",
+    "testsPassed": true,
+    "confidence": 85.0,
+    "validatorSummary": "Original ARCANE validator: passed.",
+    "steps": [
+      {
+        "key": "failed",
+        "title": "Build failed",
+        "body": "GitHub marked CI Test Suite #35 as failed.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "bisect",
+        "title": "Analyze the failure",
+        "body": "The `validate_token` function incorrectly checks if the cleaned token length is less than 40 instead of 10. This causes valid tokens with fewer than 40 characters to raise an unexpected ValueError.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "patch",
+        "title": "Prepare the patch",
+        "body": "Restore the minimum token length to 10 characters.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "related",
+        "title": "Review the changed files",
+        "body": "Inspect the source change and patch attachment in PR #20.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "sandbox",
+        "title": "Review validation",
+        "body": "The PR records the ARCANE validator result as True.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "ready",
+        "title": "Review the pull request",
+        "body": "fix: ARCANE auto-repair for test_valid_token",
+        "evidence": "",
+        "status": "done"
+      }
+    ]
+  },
+  "42468830879": {
+    "number": 10,
+    "url": "https://github.com/ajstarks117/TEST-REPO/actions/runs/42468830879",
+    "sha": "1e690ab160af391f1223dc0ca46bb75db0cd316a",
+    "prUrl": "https://github.com/ajstarks117/TEST-REPO/pull/6",
+    "title": "CI Test Suite #10 \u00b7 test_valid_token",
+    "failingTest": "test_valid_token",
+    "failingFile": "src/auth.py",
+    "rootCause": "The validate_token function incorrectly enforces a minimum token length of 90 characters instead of 10. This causes valid tokens with lengths under 90 characters to raise a ValueError.",
+    "patchDiff": "--- a/src/auth.py\n+++ b/src/auth.py\n@@ -9,7 +9,7 @@\n         raise ValueError(\"Token cannot be None\")\n     cleaned_token = token.strip()\n \n-    if len(cleaned_token) < 90:\n+    if len(cleaned_token) < 10:\n         raise ValueError(\"Token must be at least 10 characters long\")\n \n     return {\n\n",
+    "testsPassed": true,
+    "confidence": 85.0,
+    "validatorSummary": "Original ARCANE validator: passed.",
+    "steps": [
+      {
+        "key": "failed",
+        "title": "Build failed",
+        "body": "GitHub marked CI Test Suite #10 as failed.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "bisect",
+        "title": "Analyze the failure",
+        "body": "The validate_token function incorrectly enforces a minimum token length of 90 characters instead of 10. This causes valid tokens with lengths under 90 characters to raise a ValueError.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "patch",
+        "title": "Prepare the patch",
+        "body": "Restore the minimum token length to 10 characters.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "related",
+        "title": "Review the changed files",
+        "body": "Inspect the source change and patch attachment in PR #6.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "sandbox",
+        "title": "Review validation",
+        "body": "The PR records the ARCANE validator result as True.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "ready",
+        "title": "Review the pull request",
+        "body": "fix: ARCANE auto-repair for test_valid_token",
+        "evidence": "",
+        "status": "done"
+      }
+    ]
+  }
+}
