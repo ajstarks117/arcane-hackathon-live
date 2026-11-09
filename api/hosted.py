@@ -30,13 +30,20 @@ def expire():
 def dispatch(event):
     with lock:
         expire()
-        if event["repo_full_name"] != DEMO_REPO or event["commit_sha"] != DEMO_SHA:
+        if event["repo_full_name"] != DEMO_REPO or (event["commit_sha"] != DEMO_SHA and not (event.get("source") == "retry" and event.get("demoCase") in ("21", "22"))):
             raise HTTPException(400, "Use the pinned public token-validation build for this deployment.")
         snapshot = json.loads(Path(__file__).with_name("demo_repair.json").read_text(encoding="utf-8"))
-        run = store.create_run({**event, "source": "recorded-demo"})
+        case = event.get("demoCase", "token")
+        if case != "token":
+            cases = json.loads(Path(__file__).with_name("demo_cases.json").read_text(encoding="utf-8"))
+            if case not in cases:
+                raise HTTPException(400, "Unknown demo issue.")
+            snapshot = cases[case]
+        run = store.create_run({**event, "commit_sha": snapshot.get("sha", DEMO_SHA), "source": "recorded-demo"})
+        run["_demoCase"] = case
         run.update(snapshot)
         run["finishedAt"] = run["startedAt"]
-        store.log(run, "INFO", "Loaded the recorded token-validation repair. The test results and pull request are from the original run.")
+        store.log(run, "INFO", "Loaded saved repair evidence for playback.")
         store.add_audit("Viewed recorded demo repair", run["repo"], run["owner"])
         store.save()
         return run

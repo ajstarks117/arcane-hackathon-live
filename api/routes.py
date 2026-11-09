@@ -234,6 +234,7 @@ def get_run(run_id: str, user=Depends(require_user)):
 
 
 class NewRun(BaseModel):
+    demoCase: str = "token"
     repo: str = ""
     branch: str = "main"
     workflowRun: str = ""
@@ -249,7 +250,7 @@ def create_run(body: NewRun, request: Request, user=Depends(require_user)):
         if body.repo != DEMO_REPO or body.sha not in ("", DEMO_SHA) or body.workflowRun:
             raise HTTPException(400, "Choose the published token-validation demo build.")
         event = {"repo_full_name": DEMO_REPO, "commit_sha": DEMO_SHA, "failure_log": DEMO_LOG,
-                 "branch": "main", "source": "manual", "owner": login_of(user), "actor": login_of(user)}
+                 "branch": "main", "demoCase": body.demoCase, "source": "manual", "owner": login_of(user), "actor": login_of(user)}
         return public_run(enqueue_event(request, event), detail=True)
     repo = body.repo.strip()
     url_repo, run_id = parse_workflow_ref(body.workflowRun)
@@ -298,6 +299,7 @@ def retry_run(run_id: str, body: RetryBody, request: Request, user=Depends(requi
     event = {
         "repo_full_name": old["repo"],
         "commit_sha": old["sha"],
+        "demoCase": old.get("_demoCase", "token"),
         "failure_log": log,
         "branch": old["branch"],
         "commit_message": old["commitMessage"],

@@ -344,39 +344,48 @@ function Home({ go, openRun }: { go: (s: Screen) => void; openRun: () => void })
 // ───────────────────────────────────────────────────────── run dialog ─────
 
 function RunDialog({ close, started }: { close: () => void; started: (r: Run) => void }) {
-  const { notify, refresh } = useData();
+  const { refresh } = useData();
   const repo = "ajstarks117/TEST-REPO";
+  const [demoCase, setCase] = useState("token");
+  const [run, setRun] = useState<Run | null>(null);
+  const [shown, setShown] = useState(1);
   const [busy, setBusy] = useState(false);
   const [err, setErr] = useState("");
+  useEffect(() => {
+    if (!run || shown >= run.steps.length) return;
+    const timer = window.setTimeout(() => setShown(shown + 1), 1800);
+    return () => window.clearTimeout(timer);
+  }, [run, shown]);
   const submit = async () => {
     setBusy(true);
     setErr("");
     try {
-      const run = await api.createRun({ repo, branch: "main" });
-      notify("Recorded demo loaded");
+      const result = await api.createRun({ repo, branch: "main", demoCase });
+      setRun(result);
       await refresh();
-      started(run);
     } catch (e) {
       setErr(e instanceof ApiError ? e.message : String(e));
+    } finally {
       setBusy(false);
     }
   };
+  const finished = run && shown >= run.steps.length;
   return (
-    <Modal
-      title="Run repair on a build"
-      description="Explore the recorded repair for the public token-validation failure, including its timeline, Docker test results and patch."
-      onClose={close}
-      footer={
-        <>
-          <Button onClick={close}>Cancel</Button>
-          <Button kind="primary" onClick={submit} disabled={busy}>
-            {busy ? "Starting…" : "Start repair"}
-          </Button>
-        </>
-      }
-    >
-      <p><strong>{repo}</strong> · <code>1e690ab</code></p>
-      <p>The build rejects a valid 20-character token. This demo loads a saved result and links to the original pull request.</p>
+    <Modal title="Replay a repair" description={repo} onClose={close}
+      footer={<>
+        <Button onClick={close}>Close</Button>
+        {run ? finished && <Button onClick={() => started(run)}>View repair details</Button>
+          : <Button kind="primary" onClick={submit} disabled={busy}>{busy ? "Loading..." : "Start replay"}</Button>}
+      </>}>
+      <p>This simulation plays back saved evidence. Docker and AI do not run during playback.</p>
+      <label>Choose an issue <select value={demoCase} disabled={busy || !!run} onChange={e => setCase(e.target.value)}>
+        <option value="token">Valid token rejected</option>
+        <option value="21">#21 - Null login payload</option>
+        <option value="22">#22 - Null Authorization header</option>
+      </select></label>
+      {run && <ol aria-live="polite">{run.steps.slice(0, shown).map(step =>
+        <li key={step.key}><strong>{step.title}</strong> {step.body}</li>)}</ol>}
+      {finished && githubPullRequestLink(run.prUrl)}
       {err && <p className="inline-error">{err}</p>}
     </Modal>
   );
@@ -1743,7 +1752,7 @@ function Shell() {
   const [modal, setModal] = useState<ModalKind>(null);
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [palette, setPalette] = useState(false);
-  const { toast, notify } = useData();
+  const { toast, notify, select } = useData();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -1775,7 +1784,7 @@ function Shell() {
         {screen === "settings" && <Settings />}
         {screen === "components" && <ComponentsPage />}
       </AppShell>
-      {modal === "run" && <RunDialog close={() => setModal(null)} started={() => { setModal(null); setScreen("repair"); }} />}
+      {modal === "run" && <RunDialog close={() => setModal(null)} started={run => { select(run.id); setModal(null); setScreen("repair"); }} />}
       {modal === "retry" && <RetryDialog close={() => setModal(null)} go={setScreen} />}
       {modal === "assign" && <AssignDialog close={() => setModal(null)} />}
       {modal === "reject" && <RejectDialog runId={rejectId} close={() => setModal(null)} />}
