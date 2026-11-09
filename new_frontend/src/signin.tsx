@@ -15,7 +15,7 @@ export function SignIn() {
           Sign in with GitHub
         </Button>
         {err && <p className="inline-error">GitHub sign-in failed ({err}). Please try again.</p>}
-        <small>Sign in to run the pinned token-validation demo and review your results.</small>
+        <small>Sign in to explore three recorded repairs and their pull requests.</small>
       </div>
       <p className="auth-foot">
         <a href="https://github.com/ajstarks117/TEST-REPO/pull/6">View the verified token fix on GitHub</a>

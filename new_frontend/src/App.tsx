@@ -377,7 +377,7 @@ function RunDialog({ close, started }: { close: () => void; started: (r: Run) =>
         {run ? finished && <Button onClick={() => started(run)}>View repair details</Button>
           : <Button kind="primary" onClick={submit} disabled={busy}>{busy ? "Loading..." : "Start replay"}</Button>}
       </>}>
-      <p>This simulation plays back saved evidence. Docker and AI do not run during playback.</p>
+      <p className="replay-note">Live repairs need a Docker worker to run tests from a connected repository. This deployment has no live worker, so you can explore three saved repairs and their GitHub pull requests here. Repository connections and failed Actions run links are available in the full setup.</p>
       <label>Choose an issue <select value={demoCase} disabled={busy || !!run} onChange={e => setCase(e.target.value)}>
         <option value="token">Valid token rejected</option>
         <option value="21">#21 - Null login payload</option>

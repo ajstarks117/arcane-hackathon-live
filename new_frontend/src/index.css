@@ -24,7 +24,7 @@
   }
   body {
     margin: 0;
-    min-width: 1180px;
+    min-width: 0;
     background: var(--chalk);
   }
   button,
@@ -2451,4 +2451,66 @@ textarea:focus,
 .step-pending .seam-node {
   border-color: var(--line);
   color: var(--lichen);
+}
+
+.replay-note {
+  margin-bottom: 1rem;
+  padding-inline-start: .85rem;
+  border-inline-start: 3px solid var(--green);
+  color: var(--lichen);
+  font-size: .94rem;
+  line-height: 1.55;
+}
+.modal, .palette {
+  max-width: calc(100vw - 24px);
+  max-height: calc(100dvh - 24px);
+  overflow-y: auto;
+}
+.modal-body select { max-width: 100%; }
+.auth-card, .setup-form { max-width: calc(100vw - 32px); }
+
+@media (max-width: 1390px) {
+  .repair-layout { grid-template-columns: minmax(180px, 20%) minmax(0, 1fr); }
+  .repair-body { grid-template-columns: minmax(230px, 35%) minmax(0, 1fr); }
+  .decision-bar { position: static; height: auto; padding: 16px; flex-wrap: wrap; gap: 12px; }
+  .repair-workspace { padding-bottom: 0; }
+}
+@media (max-width: 1180px) {
+  .app-shell { display: block; }
+  .sidebar {
+    position: static; width: 100%; padding: 10px 16px 0;
+    display: grid; grid-template-columns: 1fr auto;
+  }
+  .brand { padding: 4px 0; }
+  .sidebar .workspace, .main-nav .nav-label { display: none; }
+  .sidebar-foot { grid-area: 1 / 2; margin: 0; padding: 0; border: 0; }
+  .main-nav {
+    grid-column: 1 / -1; flex-direction: row; overflow-x: auto;
+    margin: 6px 0 0; padding-bottom: 4px;
+  }
+  .main-nav button { flex-shrink: 0; }
+  .settings-layout, .history-layout, .pr-layout, .log-layout { grid-template-columns: minmax(0, 1fr); }
+  .history-list, .data-table, .settings-block, .diff-panel, .code-diff { min-width: 0; overflow-x: auto; }
+}
+@media (max-width: 760px) {
+  .page, .repair-title, .timeline-panel, .settings-layout { padding: 18px 14px; }
+  .topbar { position: static; flex-wrap: wrap; height: auto; padding: 8px 14px; gap: 8px; }
+  .global-search, .top-actions { width: 100%; }
+  .top-actions .select-box { min-width: 0; flex: 1; }
+  .page-header, .repair-title, .decision-actions, .modal-footer, .diff-toolbar,
+  .filter-bar, .log-controls, .flow-diagram, .component-row, .settings-head,
+  .block-title, .branch-flow, .bottom-actions, .section-heading { flex-wrap: wrap; gap: 8px; }
+  .repair-layout, .repair-body, .conflict-grid, .setup-page, .diff-layout,
+  .form-grid.two, .form-grid.three, .form-grid.four, .test-grid { grid-template-columns: minmax(0, 1fr); }
+  .settings-layout > *, .repair-body > *, .pr-layout > *, .history-layout > * { min-width: 0; }
+  .run-list { max-height: 14rem; overflow-y: auto; }
+  .data-table .tr { min-width: 660px; }
+  .repo-setting, .repo-settings-head, .team-row, .history-head, .history-list > button { min-width: 550px; }
+  .model-row, .invite-row, .notification-list label, .working-row { grid-template-columns: minmax(0, 1fr); }
+  .segmented { max-width: 100%; height: auto; flex-wrap: wrap; }
+  .log-controls .search-box, .settings-note, .auth-card, .code-pane pre { max-width: 100%; }
+  .auth-page { padding: 16px; }
+  .modal-body, .modal-head, .modal-footer { padding: 16px; }
+  .modal-body, .repair-title, .page-header, .pr-document { overflow-wrap: anywhere; }
+  .toast { right: 12px; width: min(340px, calc(100vw - 24px)); }
 }
