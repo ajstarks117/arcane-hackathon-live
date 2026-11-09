@@ -1,7 +1,10 @@
 import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import { api, ApiError, type Me, type Overview, type Run, type Settings } from "./api";
 
+import { replayRun, type Replay, type DemoCase } from "./replay";
+
 interface Ctx {
+  startReplay: (issue: DemoCase) => void;
   runs: Run[];
   overview: Overview | null;
   settings: Settings | null;
@@ -47,6 +50,32 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     toastTimer.current = window.setTimeout(() => setToast(""), 4500);
   }, []);
 
+  const storageKey = "arcane.replays." + (me?.login ?? "local");
+  const [entries, setEntries] = useState<Replay[]>([]);
+  const [now, setNow] = useState(Date.now);
+  useEffect(() => {
+    try { setEntries(JSON.parse(sessionStorage.getItem(storageKey) ?? "[]")); }
+    catch { setEntries([]); }
+    setNow(Date.now());
+  }, [storageKey]);
+  const active = entries.some(e => now < e.start + 30000);
+  useEffect(() => {
+    if (!active) return;
+    const timer = window.setInterval(() => setNow(Date.now()), 400);
+    return () => window.clearInterval(timer);
+  }, [active]);
+  const startReplay = (issue: DemoCase) => {
+    const start = Date.now();
+    const id = "replay-" + crypto.randomUUID().slice(0, 8);
+    const next = [{ id, start, issue }, ...entries].slice(0, 30);
+    setEntries(next);
+    try { sessionStorage.setItem(storageKey, JSON.stringify(next)); } catch { /* In-memory playback still works. */ }
+    setNow(start);
+    setSelectedId(id);
+    selRef.current = id;
+    setRepoFilter("");
+  };
+
   const refresh = useCallback(async () => {
     if (authRef.current !== "ready") return;
     try {
@@ -55,7 +84,7 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
       setRuns(r.runs);
       setError(null);
       const id = selRef.current ?? r.runs[0]?.id ?? null;
-      if (id) {
+      if (id && !id.startsWith("replay-")) {
         if (!selRef.current) setSelectedId(id);
         try {
           setDetail(await api.run(id));
@@ -127,16 +156,17 @@ export function DataProvider({ children }: { children: React.ReactNode }) {
     (id: string | null) => {
       setSelectedId(id);
       selRef.current = id;
-      if (id) api.run(id).then(setDetail).catch(() => {});
+      if (id && !id.startsWith("replay-")) api.run(id).then(setDetail).catch(() => {});
     },
     [],
   );
 
-  const selected = useMemo(() => runs.find((r) => r.id === selectedId) ?? null, [runs, selectedId]);
+  const combined = useMemo(() => [...entries.map(e => replayRun(e, now)), ...runs], [entries, now, runs]);
+  const selected = useMemo(() => combined.find((r) => r.id === selectedId) ?? null, [combined, selectedId]);
 
   const value: Ctx = {
-    runs, overview, settings, me, authState, signOut, error, loaded, repoFilter, setRepoFilter,
-    selectedId, select, selected, detail: detail && detail.id === selectedId ? detail : null,
+    runs: combined, startReplay, overview, settings, me, authState, signOut, error, loaded, repoFilter, setRepoFilter,
+    selectedId, select, selected, detail: selected?.source === "demo-replay" ? selected : detail && detail.id === selectedId ? detail : null,
     refresh, reloadSettings, toast, notify,
   };
   return <DataCtx.Provider value={value}>{children}</DataCtx.Provider>;

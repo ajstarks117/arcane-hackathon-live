@@ -1,0 +1,118 @@
+{
+  "21": {
+    "title": "Demo replay - Null login payload",
+    "rootCause": "Checking for credential fields in a null payload raises TypeError.",
+    "failureLog": "Checking for credential fields in a null payload raises TypeError.",
+    "sha": "cc1f7d5671e7b33f8b16df4be9f857398c2071bf",
+    "failingTest": "test_null_login_payload",
+    "failingFile": "api.py",
+    "patchDiff": "diff --git a/api.py b/api.py\nindex 2961c7f..c55bc82 100644\n--- a/api.py\n+++ b/api.py\n@@ -1,7 +1,7 @@\n from auth import validate_user\n \n def login_endpoint(request_data):\n-    if \"username\" not in request_data or \"password\" not in request_data:\n+    if not isinstance(request_data, dict) or \"username\" not in request_data or \"password\" not in request_data:\n         return {\"status\": 400, \"message\": \"Missing credentials\"}\n     if validate_user(request_data[\"username\"], request_data[\"password\"]):\n         return {\"status\": 200, \"message\": \"Success\"}\ndiff --git a/tests/test_api.py b/tests/test_api.py\nindex 264b503..3eacb60 100644\n--- a/tests/test_api.py\n+++ b/tests/test_api.py\n@@ -21,3 +21,7 @@ def test_login_unauthorized():\n \n def test_login_missing_fields():\n     assert login_endpoint({\"username\": \"admin\"}).get(\"status\") == 400\n+\n+\n+def test_null_login_payload():\n+    assert login_endpoint(None)[\"status\"] == 400\n",
+    "testsPassed": true,
+    "validatorSummary": "Previously verified locally: 12 tests passed.",
+    "status": "ready",
+    "stage": "DONE",
+    "prUrl": "https://github.com/ajstarks117/TEST-REPO/pull/23",
+    "steps": [
+      {
+        "key": "failed",
+        "title": "Identify the failure",
+        "body": "Checking for credential fields in a null payload raises TypeError.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "bisect",
+        "title": "Inspect the affected revision",
+        "body": "Both examples use the same repository revision cc1f7d5.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "patch",
+        "title": "Review the fix",
+        "body": "The proposed guard is in api.py.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "related",
+        "title": "Inspect the regression test",
+        "body": "test_null_login_payload",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "sandbox",
+        "title": "Review prior verification",
+        "body": "12 tests passed locally on the PR branch.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "ready",
+        "title": "Inspect the pull request",
+        "body": "GitHub pull request #23 contains the fix and regression test.",
+        "evidence": "",
+        "status": "done"
+      }
+    ]
+  },
+  "22": {
+    "title": "Demo replay - Null Authorization header",
+    "rootCause": "Calling startswith on a null header raises AttributeError.",
+    "failureLog": "Calling startswith on a null header raises AttributeError.",
+    "sha": "cc1f7d5671e7b33f8b16df4be9f857398c2071bf",
+    "failingTest": "test_null_authorization_header",
+    "failingFile": "middleware.py",
+    "patchDiff": "diff --git a/middleware.py b/middleware.py\nindex 0efdbde..6a22f0e 100644\n--- a/middleware.py\n+++ b/middleware.py\n@@ -2,7 +2,7 @@ from auth import validate_user\n \n def auth_middleware(request):\n     auth_header = request.get('headers', {}).get('Authorization', '')\n-    if not auth_header.startswith('Basic '):\n+    if not isinstance(auth_header, str) or not auth_header.startswith('Basic '):\n         return False\n     try:\n         credentials = auth_header.split(' ')[1]\ndiff --git a/tests/test_middleware.py b/tests/test_middleware.py\nindex 2e7d3a7..f7ce230 100644\n--- a/tests/test_middleware.py\n+++ b/tests/test_middleware.py\n@@ -5,3 +5,7 @@ def test_middleware_success():\n \n def test_middleware_failure():\n     assert auth_middleware({\"headers\": {\"Authorization\": \"Basic admin:wrong\"}}) is False\n+\n+\n+def test_null_authorization_header():\n+    assert auth_middleware({'headers': {'Authorization': None}}) is False\n",
+    "testsPassed": true,
+    "validatorSummary": "Previously verified locally: 12 tests passed.",
+    "status": "ready",
+    "stage": "DONE",
+    "prUrl": "https://github.com/ajstarks117/TEST-REPO/pull/24",
+    "steps": [
+      {
+        "key": "failed",
+        "title": "Identify the failure",
+        "body": "Calling startswith on a null header raises AttributeError.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "bisect",
+        "title": "Inspect the affected revision",
+        "body": "Both examples use the same repository revision cc1f7d5.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "patch",
+        "title": "Review the fix",
+        "body": "The proposed guard is in middleware.py.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "related",
+        "title": "Inspect the regression test",
+        "body": "test_null_authorization_header",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "sandbox",
+        "title": "Review prior verification",
+        "body": "12 tests passed locally on the PR branch.",
+        "evidence": "",
+        "status": "done"
+      },
+      {
+        "key": "ready",
+        "title": "Inspect the pull request",
+        "body": "GitHub pull request #24 contains the fix and regression test.",
+        "evidence": "",
+        "status": "done"
+      }
+    ]
+  }
+}

@@ -1,0 +1,64 @@
+{
+  "title": "Recorded demo \u00b7 test_valid_token",
+  "failingTest": "test_valid_token",
+  "failingFile": "src/auth.py",
+  "failingLine": 13,
+  "suspectedFunction": "validate_token",
+  "rootCause": "The validate_token function incorrectly enforces a minimum token length of 90 characters instead of 10. This causes valid tokens with lengths under 90 characters to raise a ValueError.",
+  "bisectReport": "Bisect identified commit d6c742a as the first bad commit.",
+  "patchDiff": "--- a/src/auth.py\n+++ b/src/auth.py\n@@ -9,7 +9,7 @@\n         raise ValueError(\"Token cannot be None\")\n     cleaned_token = token.strip()\n \n-    if len(cleaned_token) < 90:\n+    if len(cleaned_token) < 10:\n         raise ValueError(\"Token must be at least 10 characters long\")\n \n     return {\n",
+  "regressionTest": "def test_src_auth_regression():\n    \"\"\"Regression test for: The validate_token function incorrectly enforces a minimum token length of 90 characters instead of 10. This causes valid tokens with lengths under 90 characters to raise a ValueError.\"\"\"\n    from src.auth import validate_token\n\n    valid_token = \"a\" * 20\n    result = validate_token(valid_token)\n    assert result is not None",
+  "cascadeReport": "",
+  "confidence": 85,
+  "testsPassed": true,
+  "model": "gemini-3.5-flash",
+  "attempts": 2,
+  "steps": [
+    {
+      "key": "failed",
+      "title": "Build failed",
+      "body": "The validate_token function incorrectly enforces a minimum token length of 90 characters instead of 10. This causes valid tokens with lengths under 90 characte\u2026",
+      "evidence": "test_valid_token failed",
+      "status": "failed"
+    },
+    {
+      "key": "bisect",
+      "title": "Found the bad commit",
+      "body": "Bisect identified commit d6c742a as the first bad commit.",
+      "evidence": "commit 1e690ab",
+      "status": "done"
+    },
+    {
+      "key": "patch",
+      "title": "Wrote a fix",
+      "body": "Attempt 2 produced a candidate patch.",
+      "evidence": "1 files changed \u00b7 1 additions \u00b7 1 deletions",
+      "status": "done"
+    },
+    {
+      "key": "related",
+      "title": "Checked related code",
+      "body": "No merge conflicts with the target branch.",
+      "evidence": "",
+      "status": "done"
+    },
+    {
+      "key": "sandbox",
+      "title": "Tested in a sandbox",
+      "body": "All tests passed in Docker sandbox. Confidence: 85.0%.",
+      "evidence": "passed \u00b7 85% confidence \u00b7 network disabled",
+      "status": "done"
+    },
+    {
+      "key": "ready",
+      "title": "Ready for review",
+      "body": "The fix is safe to open as a pull request.",
+      "evidence": "85% confidence",
+      "status": "done"
+    }
+  ],
+  "validatorSummary": "All tests passed in Docker sandbox. Confidence: 85.0%.",
+  "prUrl": "https://github.com/ajstarks117/TEST-REPO/pull/6",
+  "status": "ready",
+  "stage": "DONE"
+}

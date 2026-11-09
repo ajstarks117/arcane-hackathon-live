@@ -343,50 +343,26 @@ function Home({ go, openRun }: { go: (s: Screen) => void; openRun: () => void })
 
 // ───────────────────────────────────────────────────────── run dialog ─────
 
-function RunDialog({ close, started }: { close: () => void; started: (r: Run) => void }) {
-  const { refresh } = useData();
+function RunDialog({ close, started }: { close: () => void; started: () => void }) {
+  const { startReplay } = useData();
   const repo = "ajstarks117/TEST-REPO";
-  const [demoCase, setCase] = useState("token");
-  const [run, setRun] = useState<Run | null>(null);
-  const [shown, setShown] = useState(1);
-  const [busy, setBusy] = useState(false);
-  const [err, setErr] = useState("");
-  useEffect(() => {
-    if (!run || shown >= run.steps.length) return;
-    const timer = window.setTimeout(() => setShown(shown + 1), 1800);
-    return () => window.clearTimeout(timer);
-  }, [run, shown]);
-  const submit = async () => {
-    setBusy(true);
-    setErr("");
-    try {
-      const result = await api.createRun({ repo, branch: "main", demoCase });
-      setRun(result);
-      await refresh();
-    } catch (e) {
-      setErr(e instanceof ApiError ? e.message : String(e));
-    } finally {
-      setBusy(false);
-    }
+  const [demoCase, setCase] = useState<import("./replay").DemoCase>("token");
+  const submit = () => {
+    startReplay(demoCase);
+    started();
   };
-  const finished = run && shown >= run.steps.length;
   return (
     <Modal title="Replay a repair" description={repo} onClose={close}
       footer={<>
         <Button onClick={close}>Close</Button>
-        {run ? finished && <Button onClick={() => started(run)}>View repair details</Button>
-          : <Button kind="primary" onClick={submit} disabled={busy}>{busy ? "Loading..." : "Start replay"}</Button>}
+        <Button kind="primary" onClick={submit}>Start repair</Button>
       </>}>
       <p className="replay-note">Live repairs need a Docker worker to run tests from a connected repository. This deployment has no live worker, so you can explore three saved repairs and their GitHub pull requests here. Repository connections and failed Actions run links are available in the full setup.</p>
-      <label>Choose an issue <select value={demoCase} disabled={busy || !!run} onChange={e => setCase(e.target.value)}>
+      <label>Choose an issue <select value={demoCase} onChange={e => setCase(e.target.value as typeof demoCase)}>
         <option value="token">Valid token rejected</option>
         <option value="21">#21 - Null login payload</option>
         <option value="22">#22 - Null Authorization header</option>
       </select></label>
-      {run && <ol aria-live="polite">{run.steps.slice(0, shown).map(step =>
-        <li key={step.key}><strong>{step.title}</strong> {step.body}</li>)}</ol>}
-      {finished && githubPullRequestLink(run.prUrl)}
-      {err && <p className="inline-error">{err}</p>}
     </Modal>
   );
 }
@@ -599,7 +575,7 @@ function RepairRun({ go, retry, assign }: { go: (s: Screen) => void; retry: () =
               <p>
                 {run.sha && !run.sha.startsWith("manual") ? (
                   <>
-                    Triggered by commit <code>{run.sha.slice(0, 7)}</code>
+                    {run.source === "demo-replay" ? "Demo replay for commit" : "Triggered by commit"} <code>{run.sha.slice(0, 7)}</code>
                     {run.author && ` by ${run.author}`}.{" "}
                   </>
                 ) : null}
@@ -631,7 +607,7 @@ function RepairRun({ go, retry, assign }: { go: (s: Screen) => void; retry: () =
                     onClick={() => setOpen(i)}
                   >
                     <span className="seam-node">
-                      {step.status === "failed" ? <Icon name="x" size={13} /> : step.status === "pending" ? null : <Icon name="check" size={13} />}
+                      {step.status === "failed" ? <Icon name="x" size={13} /> : step.status === "running" ? <span className="spinner" aria-label="In progress" /> : step.status === "pending" ? null : <Icon name="check" size={13} />}
                     </span>
                     <span className="step-copy">
                       <strong>{step.title}</strong>
@@ -645,7 +621,7 @@ function RepairRun({ go, retry, assign }: { go: (s: Screen) => void; retry: () =
               <div className="model-footnote">
                 <Icon name="spark" size={15} />
                 <span>
-                  {run.model || "Model pending"} · {run.attempts} {run.attempts === 1 ? "attempt" : "attempts"} ·{" "}
+                  {run.model || (run.source === "demo-replay" ? "Recorded evidence" : "Model pending")} · {run.attempts} {run.attempts === 1 ? "attempt" : "attempts"} ·{" "}
                   {duration(run.startedAt, run.finishedAt)}
                   {run.memoryHit && " · reused a past fix"}
                 </span>
@@ -656,7 +632,7 @@ function RepairRun({ go, retry, assign }: { go: (s: Screen) => void; retry: () =
           <div className="decision-bar">
             <div>
               <strong>
-                {run.testsPassed == null ? "Tests not run yet" : run.testsPassed ? "Sandbox tests passed" : "Sandbox tests failed"}
+                {run.testsPassed == null ? "Tests not run yet" : run.testsPassed ? (run.source === "demo-replay" ? "Recorded tests passed" : "Sandbox tests passed") : "Sandbox tests failed"}
               </strong>
               <span>
                 {run.confidence != null ? `${run.confidence}% confidence` : "No confidence score yet"}
@@ -666,10 +642,10 @@ function RepairRun({ go, retry, assign }: { go: (s: Screen) => void; retry: () =
               </span>
             </div>
             <div className="decision-actions">
-              <Button onClick={retry} disabled={run.status === "working"}>
+              <Button onClick={retry} disabled={run.status === "working" || run.source === "demo-replay"}>
                 Try again with a hint
               </Button>
-              <Button onClick={assign} disabled={run.status === "working"}>
+              <Button onClick={assign} disabled={run.status === "working" || run.source === "demo-replay"}>
                 Send to a person
               </Button>
               {githubPullRequestLink(run.prUrl) ?? <Button kind="primary" icon="pull" onClick={() => go("pr")} disabled={run.status === "working" || !detail?.patchDiff}>
@@ -1017,7 +993,7 @@ function PRPreview() {
             <code>arcane/fix-{run.sha.slice(0, 7)}</code>
             <span>into</span>
             <code>{run.branch}</code>
-            {run.testsPassed != null && <Badge tone={run.testsPassed ? "success" : "error"}>{run.testsPassed ? "Sandbox tests passed" : "Sandbox tests failed"}</Badge>}
+            {run.testsPassed != null && <Badge tone={run.testsPassed ? "success" : "error"}>{run.testsPassed ? (run.source === "demo-replay" ? "Recorded tests passed" : "Sandbox tests passed") : "Sandbox tests failed"}</Badge>}
           </div>
           <div className="pr-section">
             <h2>What broke</h2>
@@ -1752,7 +1728,7 @@ function Shell() {
   const [modal, setModal] = useState<ModalKind>(null);
   const [rejectId, setRejectId] = useState<string | null>(null);
   const [palette, setPalette] = useState(false);
-  const { toast, notify, select } = useData();
+  const { toast, notify } = useData();
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "k") {
@@ -1784,7 +1760,7 @@ function Shell() {
         {screen === "settings" && <Settings />}
         {screen === "components" && <ComponentsPage />}
       </AppShell>
-      {modal === "run" && <RunDialog close={() => setModal(null)} started={run => { select(run.id); setModal(null); setScreen("repair"); }} />}
+      {modal === "run" && <RunDialog close={() => setModal(null)} started={() => { setModal(null); setScreen("repair"); }} />}
       {modal === "retry" && <RetryDialog close={() => setModal(null)} go={setScreen} />}
       {modal === "assign" && <AssignDialog close={() => setModal(null)} />}
       {modal === "reject" && <RejectDialog runId={rejectId} close={() => setModal(null)} />}
