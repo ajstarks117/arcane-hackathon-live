@@ -212,7 +212,7 @@ def logout(request: Request, response: Response):
 
 @auth_router.get("/github/repos")
 def my_repos(user=Depends(require_user)):
-    token = (user or {}).get("token") or os.getenv("GITHUB_PAT")
+    token = (user or {}).get("token") or (None if os.getenv("ARCANE_HOSTED") else os.getenv("GITHUB_PAT"))
     if not token:
         raise HTTPException(400, "No GitHub token available.")
     try:

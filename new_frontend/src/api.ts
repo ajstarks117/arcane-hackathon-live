@@ -97,6 +97,7 @@ export interface RepoSetting {
 }
 
 export interface Settings {
+  liveRepairs?: boolean;
   workspace: string;
   repositories: RepoSetting[];
   models: { id: string; name: string; role: string }[];
@@ -193,6 +194,11 @@ const post = <T>(path: string, body?: unknown) =>
   request<T>(path, { method: "POST", body: JSON.stringify(body ?? {}) });
 
 export const api = {
+  liveSettings: () => request<{ repo: string; configured: boolean }>("/live/settings"),
+  liveKey: (key: string) => request("/live/key", { method: "PUT", body: JSON.stringify({key}) }),
+  connectLive: (repo: string, token: string) => post("/live/connect", {repo, token}),
+  disconnectLive: () => request("/live/connect", {method: "DELETE"}),
+  liveRun: (url: string) => post<Run>("/live/runs", {url}),
   overview: () => request<Overview>("/overview"),
   runs: (q = "") => request<{ runs: Run[] }>(`/runs${q}`),
   run: (id: string) => request<Run>(`/runs/${id}`),

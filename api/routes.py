@@ -289,6 +289,8 @@ class RetryBody(BaseModel):
 @router.post("/runs/{run_id}/retry")
 def retry_run(run_id: str, body: RetryBody, request: Request, user=Depends(require_user)):
     old = get_visible(run_id, user)
+    if old["source"] == "hosted-live":
+        raise HTTPException(400, "Paste the failed Actions URL to retry the live repair.")
     log = old["failureLog"]
     if os.getenv("ARCANE_HOSTED") and (body.hint or body.files):
         raise HTTPException(400, "Hosted repair retries reuse the pinned demo input.")
@@ -325,6 +327,8 @@ def open_pr(run_id: str, body: PrBody, user=Depends(require_user)):
     run = get_visible(run_id, user)
     if run["status"] == "working":
         raise HTTPException(409, "This repair is still running.")
+    if run["source"] == "hosted-live" and not run["prUrl"]:
+        raise HTTPException(409, "No draft pull request was produced for this live repair.")
     if not run["prUrl"]:
         try:
             if os.getenv("ARCANE_DRY_RUN", "").lower() in ("1", "true", "yes"):
@@ -500,6 +504,9 @@ def model_status() -> dict:
 def get_settings(user=Depends(require_user)):
     s = dict(store.settings)
     s["repositories"] = [r for r in store.repos() if user is None or store.watched.get(r["name"]) == user.get("login")] if store.watched else store.repos()
+    if os.getenv("ARCANE_HOSTED"):
+        s["repositories"] = [r for r in s["repositories"] if store.watched.get(r["name"]) == login_of(user)]
+    s["liveRepairs"] = bool(os.getenv("ARCANE_HOSTED"))
     s["modelStatus"] = model_status()
     s["integrations"] = {
         "githubPat": bool(os.getenv("GITHUB_PAT")),

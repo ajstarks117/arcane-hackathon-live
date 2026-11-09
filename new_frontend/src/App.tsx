@@ -217,7 +217,7 @@ function Home({ go, openRun }: { go: (s: Screen) => void; openRun: () => void })
           <div className="section-head">
             <div>
               <h2>Fixes ready to review</h2>
-              <p>Each change was tested in an isolated sandbox.</p>
+              <p>Open a repair to review its diff and validation status.</p>
             </div>
             <span className="count">{rows.length} {rows.length === 1 ? "fix" : "fixes"}</span>
           </div>
@@ -345,27 +345,38 @@ function Home({ go, openRun }: { go: (s: Screen) => void; openRun: () => void })
 // ───────────────────────────────────────────────────────── run dialog ─────
 
 function RunDialog({ close, started }: { close: () => void; started: () => void }) {
-  const { startReplay } = useData();
-  const repo = "ajstarks117/TEST-REPO";
+  const { startReplay, refresh, select } = useData();
   const [url, setUrl] = useState("");
+  const [repo, setRepo] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [err, setErr] = useState("");
+  useEffect(() => { api.liveSettings().then(r => setRepo(r.repo)).catch(() => {}); }, []);
   const build = buildFromUrl(url);
-  const submit = () => {
-    if (!build) return;
-    startReplay(build);
-    started();
+  const submit = async () => {
+    setErr("");
+    if (build && !repo) { startReplay(build); started(); return; }
+    setBusy(true);
+    try {
+      const run = await api.liveRun(url.trim());
+      await refresh();
+      select(run.id);
+      started();
+    } catch (e) { setErr(String(e instanceof Error ? e.message : e)); }
+    finally { setBusy(false); }
   };
   return (
-    <Modal title="Replay a repair" description={repo} onClose={close}
+    <Modal title="Run repair on a build" description={repo || "Recorded repairs"} onClose={close}
       footer={<>
         <Button onClick={close}>Close</Button>
-        <Button kind="primary" onClick={submit} disabled={!build}>Start repair</Button>
+        <Button kind="primary" onClick={submit} disabled={busy || (!repo && !build) || !url.trim()}>{busy ? "Starting…" : "Start repair"}</Button>
       </>}>
-      <p className="replay-note">This hosted demo replays recorded repairs. Open one of these failed GitHub Actions runs, copy its URL, and paste it below to follow the repair to its original pull request.</p>
-      <ul>{recordedBuilds.map(run => <li key={run.url}><a href={run.url} target="_blank" rel="noreferrer" className="text-button">CI Test Suite #{run.number} · {run.sha.slice(0,7)}</a></li>)}</ul>
+      {repo ? <p className="replay-note">Paste a failed push workflow from your connected repository. ARCANE will analyze the failure and open a draft PR for repository CI.</p> : <><p className="replay-note">This hosted demo replays recorded repairs. Open one of these failed GitHub Actions runs, copy its URL, and paste it below to follow the repair to its original pull request.</p>
+      <ul>{recordedBuilds.map(run => <li key={run.url}><a href={run.url} target="_blank" rel="noreferrer" className="text-button">CI Test Suite #{run.number} · {run.sha.slice(0,7)}</a></li>)}</ul></>}
       <label className="field">Failed GitHub Actions run URL
         <input type="url" placeholder="https://github.com/owner/repo/actions/runs/…" value={url} onChange={e => setUrl(e.target.value)} />
       </label>
-      {url.trim() && !build && <p className="inline-error">Paste the run URL from one of the three builds above.</p>}
+      {err && <p role="alert">{err}</p>}
+      {!repo && url.trim() && !build && <p className="inline-error">Paste the run URL from one of the three builds above.</p>}
     </Modal>
   );
 }
@@ -575,7 +586,7 @@ function RepairRun({ go, retry, assign }: { go: (s: Screen) => void; retry: () =
                 {run.repo} <b>/</b> <code>{run.branch}</code> <b>/</b> Run #{run.id}
               </span>
               <h1>{run.title}</h1>
-              {run.source === "demo-replay" && run.workflowRun && <a className="text-button" href={run.workflowRun} target="_blank" rel="noreferrer">View failed GitHub Actions run</a>}
+              {(run.source === "demo-replay" || run.source === "hosted-live") && run.workflowRun && <a className="text-button" href={run.workflowRun} target="_blank" rel="noreferrer">View failed GitHub Actions run</a>}
               <p>
                 {run.sha && !run.sha.startsWith("manual") ? (
                   <>
@@ -584,7 +595,7 @@ function RepairRun({ go, retry, assign }: { go: (s: Screen) => void; retry: () =
                   </>
                 ) : null}
                 {run.status === "working" && `Currently: ${run.stage.toLowerCase()}.`}
-                {run.status === "ready" && "ARCANE prepared a tested fix."}
+                {run.status === "ready" && (run.source === "hosted-live" ? "Draft PR opened. Review repository CI." : "ARCANE prepared a tested fix.")}
                 {run.status === "person" && (run.reason || "ARCANE needs a person to decide.")}
                 {run.status === "failed" && (run.error || "The repair failed.")}
               </p>
@@ -636,7 +647,7 @@ function RepairRun({ go, retry, assign }: { go: (s: Screen) => void; retry: () =
           <div className="decision-bar">
             <div>
               <strong>
-                {run.testsPassed == null ? "Tests not run yet" : run.testsPassed ? (run.source === "demo-replay" ? "Recorded tests passed" : "Sandbox tests passed") : "Sandbox tests failed"}
+                {run.testsPassed == null ? (run.source === "hosted-live" ? "Docker validation skipped" : "Tests not run yet") : run.testsPassed ? (run.source === "demo-replay" ? "Recorded tests passed" : "Sandbox tests passed") : "Sandbox tests failed"}
               </strong>
               <span>
                 {run.confidence != null ? `${run.confidence}% confidence` : "No confidence score yet"}
@@ -1334,6 +1345,40 @@ interface SP {
   head: (t: string, d: string) => React.ReactNode;
 }
 
+function LiveSettings({ model = false }: { model?: boolean }) {
+  const [saved, setSaved] = useState<{repo: string; configured: boolean} | null>(null);
+  const [repo, setRepo] = useState("");
+  const [secret, setSecret] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState("");
+  useEffect(() => { api.liveSettings().then(setSaved).catch(() => {}); }, []);
+  if (!saved) return null;
+  const update = async (remove: boolean) => {
+    setBusy(true);
+    try {
+      if (model) await api.liveKey(remove ? "" : secret);
+      else if (remove) await api.disconnectLive();
+      else await api.connectLive(repo.trim(), secret);
+      setSecret("");
+      setSaved(await api.liveSettings());
+      setMessage(remove ? "Removed." : "Saved.");
+    } catch (e) { setMessage(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
+  };
+  return <section className="settings-block form-stack">
+    <h3>{model ? "Your Gemini API key" : "Live repairs on failed pushes"}</h3>
+    <p>{model ? (saved.configured ? "A key is saved. Enter a replacement if it expires." : "Save your key to enable live analysis and patch generation.") :
+      "Connect a repository you administer. ARCANE sends failure excerpts and relevant source files to Gemini using your key, then opens draft pull requests. Your repository CI handles testing."}</p>
+    {!model && <Field label="Repository (owner/name)"><input value={repo} placeholder={saved.repo || "owner/repository"} onChange={e=>setRepo(e.target.value)} /></Field>}
+    <Field label={model ? "Gemini API key" : "Fine-grained GitHub token for this repository"} helper={model ? undefined : "Grant Actions read, Contents and Pull requests read/write, and Webhooks read/write."}>
+      <input type="password" autoComplete="off" value={secret} onChange={e=>setSecret(e.target.value)} />
+    </Field>
+    <div><Button disabled={busy || !secret.trim() || (!model && !repo.trim())} onClick={()=>update(false)}>{model ? "Save key" : "Connect repository"}</Button>
+      {(model ? saved.configured : saved.repo) && <Button disabled={busy} onClick={()=>update(true)}>{model ? "Remove key" : "Disconnect " + saved.repo}</Button>}</div>
+    {message && <p role="status">{message}</p>}
+  </section>;
+}
+
 function RepositorySettings({ d, set, head }: SP) {
   const { notify, reloadSettings } = useData();
   const [mine, setMine] = useState<GhRepo[] | null>(null);
@@ -1343,8 +1388,8 @@ function RepositorySettings({ d, set, head }: SP) {
   const loadMine = () =>
     api.ghRepos().then((r) => setMine(r.repos)).catch((e) => setGhErr(e instanceof ApiError ? e.message : String(e)));
   useEffect(() => {
-    loadMine();
-  }, []);
+    if (!d.liveRepairs) loadMine();
+  }, [d.liveRepairs]);
   const watch = async () => {
     if (!pick) return;
     setBusy(true);
@@ -1361,6 +1406,7 @@ function RepositorySettings({ d, set, head }: SP) {
     }
   };
 
+  if (d.liveRepairs) return <>{head("Repositories", "Connect a repository for live repairs.")}<LiveSettings /></>;
   const update = (i: number, patch: Partial<Settings["repositories"][number]>) =>
     set({ ...d, repositories: d.repositories.map((r, j) => (j === i ? { ...r, ...patch } : r)) });
   return (
@@ -1432,6 +1478,7 @@ function RepositorySettings({ d, set, head }: SP) {
 function ModelSettings({ d, set, head }: SP) {
   const { notify } = useData();
   const [status, setStatus] = useState(d.modelStatus);
+  if (d.liveRepairs) return <>{head("Models","Use your Gemini account for live repairs.")}<LiveSettings model /></>;
   const move = (i: number, dir: -1 | 1) => {
     const j = i + dir;
     if (j < 0 || j >= d.models.length) return;

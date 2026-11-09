@@ -11,6 +11,7 @@ import httpx
 from fastapi import Depends, FastAPI, Header, HTTPException
 from pydantic import BaseModel, Field
 from api.github_app import router as setup_router, configure_oauth, credentials, dispatch_token
+from api.live import router as live_router
 from api.auth import auth_router
 from api.routes import router
 from api.recorder import start_run, apply_node, finish_run
@@ -51,7 +52,7 @@ def dispatch(event):
 async def reconcile_jobs():
     """Platform-level failures can occur before any workflow step can call back."""
     with lock:
-        active = [r["id"] for r in store.runs if r["status"] == "working"]
+        active = [r["id"] for r in store.runs if r["status"] == "working" and r["source"] != "hosted-live"]
     if not active:
         return
     try:
@@ -92,6 +93,7 @@ async def lifespan(app):
 app = FastAPI(lifespan=lifespan)
 app.include_router(setup_router)
 app.include_router(auth_router)
+app.include_router(live_router)
 app.include_router(router)
 
 @app.get("/health")
